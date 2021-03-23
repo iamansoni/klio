@@ -71,6 +71,7 @@ def final_job_config_dict():
                     "topic": "test-parent-job-out",
                     "subscription": "test-parent-job-out-sub",
                     "skip_klio_read": False,
+                    "name": "pubsub0",
                 },
             ],
             "outputs": [
@@ -78,6 +79,7 @@ def final_job_config_dict():
                     "type": "pubsub",
                     "topic": "test-job-out",
                     "skip_klio_write": False,
+                    "name": "pubsub0",
                 }
             ],
         },
@@ -89,6 +91,7 @@ def final_job_config_dict():
                     "skip_klio_existence_check": False,
                     "file_suffix": "",
                     "ping": False,
+                    "name": "gcs0",
                 }
             ],
             "outputs": [
@@ -98,6 +101,7 @@ def final_job_config_dict():
                     "force": False,
                     "location": "gs://sigint-output/test-job-out",
                     "skip_klio_existence_check": False,
+                    "name": "gcs0",
                 }
             ],
         },
@@ -427,7 +431,7 @@ def test_klio_read_file_config():
         config_dict, io.KlioIOType.DATA, io.KlioIODirection.INPUT
     )
 
-    assert "file" == klio_read_file_config.name
+    assert "file" == klio_read_file_config.TYPE_NAME
     assert config_dict["location"] == klio_read_file_config.file_pattern
 
 
@@ -440,7 +444,7 @@ def test_klio_write_file_config():
         config_dict, io.KlioIOType.DATA, io.KlioIODirection.OUTPUT
     )
 
-    assert "file" == klio_write_file_config.name
+    assert "file" == klio_write_file_config.TYPE_NAME
     assert config_dict["location"] == klio_write_file_config.file_path_prefix
 
 
@@ -461,7 +465,7 @@ def test_klio_write_bigquery_config():
         config_dict, io.KlioIOType.EVENT, io.KlioIODirection.OUTPUT
     )
 
-    assert "bq" == klio_write_bq_cfg.name
+    assert "bq" == klio_write_bq_cfg.TYPE_NAME
     assert config_dict["schema"] == klio_write_bq_cfg.schema
     assert (
         config_dict["create_disposition"]
@@ -629,3 +633,15 @@ def test_worker_disk_image_formatting(worker_disk_type, is_valid):
             config.KlioPipelineConfig(
                 pipeline_config_dict, job_name="test_job", version=2
             )
+
+def test_config_io_name_access(config_dict):
+    conf = config.KlioConfig(config_dict, config_skip_preprocessing=True)
+
+    assert (
+        conf.job_config.events.inputs["pubsub0"]
+        == conf.job_config.events.inputs[0]
+    )
+
+    pubsub_input = conf.job_config.events.inputs["pubsub0"]
+    assert isinstance(pubsub_input, io.KlioPubSubEventInput)
+    assert pubsub_input.subscription == "test-parent-job-out-sub"

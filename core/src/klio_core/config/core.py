@@ -152,8 +152,46 @@ class KlioConfig(BaseKlioConfig):
 
 @attr.attrs
 class KlioIOConfigContainer(object):
-    inputs = attr.attrib()
-    outputs = attr.attrib()
+    inputs = attr.attrib(
+        converter=lambda lst: KlioIOConfigSubContainer(configs=lst)
+    )
+    outputs = attr.attrib(
+        converter=lambda lst: KlioIOConfigSubContainer(configs=lst)
+    )
+
+    def as_dict(self):
+        return {
+                "inputs" : self.inputs.as_dict_list(),
+                "outputs" : self.outputs.as_dict_list(),
+        }
+
+
+@attr.attrs
+class KlioIOConfigSubContainer(object):
+    """Sub-container for config I/O objects, e.g. config.events.inputs"""
+
+    # list of (name, object) pairs.  Can't use a dict since we need to maintain
+    # order (dicts maintain order only with python >=3.7)
+    configs = attr.attrib()
+
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return self.configs[key][1]
+        else:
+            for (name, config) in self.configs:
+                if name == key:
+                    return config
+        return None
+
+
+    def as_dict_list(self):
+        lst = []
+        for (name, config) in self.configs:
+            config_dict = config.as_dict()
+            config_dict["name"] = name
+            lst.append(config_dict)
+        return lst
+
 
 
 @utils.config_object(key_prefix="job_config", allow_unknown_keys=True)
@@ -266,9 +304,10 @@ class KlioJobConfig(object):
         return all_subclasses
 
     def _create_config_objects(self, configs, io_type, io_direction):
+        # return a list of pairs (name, object)
         options = dict(
             [
-                (x.name, x)
+                (x.TYPE_NAME, x)
                 for x in self._get_all_config_subclasses()
                 if x.supports_type(io_type)
                 and x.supports_direction(io_direction)
@@ -284,28 +323,15 @@ class KlioJobConfig(object):
                     )
                 )
             subclass = options[type_name]
-            objs.append(subclass.from_dict(config, io_type, io_direction))
+            objs.append((name, subclass.from_dict(config, io_type, io_direction)))
         return objs
 
     def _as_dict(self):
         config_dict = attr.asdict(
             self, filter=lambda x, _: x.name not in self.ATTRIBS_TO_SKIP
         )
-        config_dict["events"] = {}
-        config_dict["events"]["inputs"] = [
-            ei.as_dict() for ei in self.events.inputs
-        ]
-        config_dict["events"]["outputs"] = [
-            eo.as_dict() for eo in self.events.outputs
-        ]
-
-        config_dict["data"] = {}
-        config_dict["data"]["inputs"] = [
-            di.as_dict() for di in self.data.inputs
-        ]
-        config_dict["data"]["outputs"] = [
-            do.as_dict() for do in self.data.outputs
-        ]
+        config_dict["events"] = self.events.as_dict()
+        config_dict["data"] = self.data.as_dict()
         return config_dict
 
     def as_dict(self):

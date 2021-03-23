@@ -258,7 +258,7 @@ class VerifyJob(object):
         logging.info("Verifying your event inputs...")
 
         pubsub_event_inputs = [
-            _i for _i in event_inputs if _i.name == "pubsub"
+            _i for _i in event_inputs if _i.TYPE_NAME == "pubsub"
         ]
         for _input in pubsub_event_inputs:
             input_topic = _input.topic
@@ -332,7 +332,7 @@ class VerifyJob(object):
         logging.info("Verifying your event outputs...")
 
         pubsub_event_outputs = [
-            _i for _i in event_outputs if _i.name == "pubsub"
+            _i for _i in event_outputs if _i.TYPE_NAME == "pubsub"
         ]
         for output in pubsub_event_outputs:
             output_topic = output.topic
