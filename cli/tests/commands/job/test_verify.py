@@ -276,11 +276,14 @@ def test_verify_iam_roles_with_svc_account(klio_config, mock_discovery_client):
     assert result is True
 
 
-def test_verify_iam_roles_http_error(klio_config, mock_discovery_client):
+def test_verify_iam_roles_http_error(
+    klio_config, mock_discovery_client, mocker
+):
     compute_client = mock_discovery_client.build("compute")
     err = google_errors.HttpError
+    mock_http_response = mocker.Mock()
     compute_client.projects().get().execute.side_effect = err(
-        "some resp", "some content".encode()
+        mock_http_response, "some content".encode()
     )
     iam_client = mock_discovery_client.build("cloudresourcemanager")
     job = verify.VerifyJob(klio_config, False)
@@ -298,7 +301,7 @@ def test_verify_iam_roles_http_error(klio_config, mock_discovery_client):
     iam_client.projects().getIamPolicy(
         resource=job.klio_config.pipeline_options.project, body={}
     ).execute.side_effect = google_errors.HttpError(
-        "some resp", "some content".encode()
+        mock_http_response, "some content".encode()
     )
     job._compute_client = compute_client
     job._iam_client = iam_client
